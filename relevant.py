@@ -35,18 +35,28 @@ def collectWords(urls):
     return wds
 
 
+class ApiError(Exception):
+    def __init__(self, value):
+        self.value = value
+
+    def __str__(self):
+        return repr(self.value)
+
+
 def getRelevantURLForWord(wd, api_key):
     from bing_search_api import BingSearchAPI
 
     bing = BingSearchAPI(api_key)
     params = {'$format': 'json', '$skip': '10'}
     result = bing.search_web(wd, payload=params)
-    if result and result.status_code == 200 and result.json is not None:
+    if result.status_code == 200:
         entries = result.json()['d']['results']
-        url = random.choice(entries)['Url']
-        return url
+        if entries:
+            return random.choice(entries)['Url']
+        else:
+            return None
     else:
-        return None
+        raise ApiError("Web search api error: {}".format(result.status_code))
 
 
 def getRelevantURLs(wds, n, api_key):
@@ -85,6 +95,10 @@ if (__name__ == '__main__'):
 
     wds = collectWords(args.urls)
     random.shuffle(wds)
-    urls = getRelevantURLs(wds, args.nr, args.apikey[0])
 
-    print urls
+    try:
+        urls = getRelevantURLs(wds, args.nr, args.apikey[0])
+        for url in urls:
+            print url
+    except ApiError as e:
+        print e.value
