@@ -29,9 +29,9 @@ def siteWords(url):
 
 
 def collectWords(urls):
-    wds = []
+    wds = set()
     for url in urls:
-        wds.extend(list(siteWords(url)))
+        wds |= set(siteWords(url))
     return wds
 
 
@@ -52,7 +52,9 @@ def getRelevantURLForWord(wd, api_key):
     if result.status_code == 200:
         entries = result.json()['d']['results']
         if entries:
-            return random.choice(entries)['Url']
+            rank = random.randint(0, len(entries)-1)
+            url = entries[rank]['Url']
+            return url, rank+10
         else:
             return None
     else:
@@ -63,16 +65,16 @@ def getRelevantURLs(wds, n, api_key):
     from urlparse import urlparse
 
     hosts = set()
-    urls = set()
+    urls = []
 
     for wd in wds:
-        url = getRelevantURLForWord(wd, api_key)
+        url, rank = getRelevantURLForWord(wd, api_key)
         if url is not None:
             pr = urlparse(url)
             host = pr.hostname
             if host is not None and host not in hosts:
                 hosts.add(host)
-                urls.add(url)
+                urls.append((url, rank))
                 if len(urls) >= n:
                     break
 
@@ -92,13 +94,11 @@ if (__name__ == '__main__'):
                                              requests (currently Microsoft \
                                              Bing Search API)')
     args = parser.parse_args()
-
     wds = collectWords(args.urls)
-    random.shuffle(wds)
 
     try:
         urls = getRelevantURLs(wds, args.nr, args.apikey[0])
-        for url in urls:
-            print url
+        for url, rank in urls:
+            print "{} ({})".format(url, rank)
     except ApiError as e:
         print e.value
